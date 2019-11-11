@@ -1,5 +1,5 @@
 <script>
-  import Game from "./Game.svelte";
+  import Game from "../game/Game.svelte";
 </script>
 
 <style>

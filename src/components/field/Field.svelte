@@ -9,6 +9,8 @@
   export let revealFieldHandler;
   export let flagFieldHandler;
 
+  isRevealed = true;
+
   $: content = isRevealed
     ? isMine
       ? "💩"

@@ -1,7 +1,12 @@
 <script>
-  import BoardHeader from "./BoardHeader.svelte";
-  import Board from "./Board.svelte";
-  import { GAME_NOT_STARTED, GAME_STARTED, GAME_WON, GAME_LOST } from "./Game.constants.js"
+  import GameInfo from "../game-header/GameHeader.svelte";
+  import Board from "../board/Board.svelte";
+  import {
+    GAME_NOT_STARTED,
+    GAME_STARTED,
+    GAME_WON,
+    GAME_LOST
+  } from "./Game.constants.js";
 
   let gameState = GAME_NOT_STARTED;
 
@@ -9,12 +14,12 @@
 
   const startGameHandler = () => {
     gameState = GAME_STARTED;
-    console.log("gameStartHandler", gameState)
-  }
-  const endGameHandler = (isWin) => {
+    console.log("gameStartHandler", gameState);
+  };
+  const endGameHandler = isWin => {
     gameState = isWin ? GAME_WON : GAME_LOST;
-    console.log("gameOverHandler", gameState)
-  }
+    console.log("gameOverHandler", gameState);
+  };
 </script>
 
 <style>
@@ -27,13 +32,12 @@
 <div class="game">
   <p>isGameStarted: {isGameStarted}</p>
   <p>gameState: {gameState}</p>
-  <BoardHeader {isGameStarted} />
+  <GameInfo {isGameStarted} />
   <Board
     rows={8}
     columns={8}
-    mines={3}
+    mines={2}
     {isGameStarted}
     {startGameHandler}
-    {endGameHandler}
-  />
+    {endGameHandler} />
 </div>

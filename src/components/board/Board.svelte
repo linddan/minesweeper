@@ -1,15 +1,19 @@
 <script>
   import { onMount } from "svelte";
   import {
-    initBoard,
+    createBoard,
+    createBoardInitializer,
     revealFieldAtPos,
-    flagFieldAtPos,
-    revealAllFields
-  } from "./board.utils.js";
+    flagField,
+    revealAllFields,
+    isGameWon,
+    isGameLost
+  } from "./board.util.js";
+  import { convertTo1DPos, to2DArray } from "../../utils/array.utils";
   import { LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./board.constants.js";
+  import Field from "../field/Field.svelte";
 
-  import Field from "./Field.svelte";
-
+  // Props
   export let rows;
   export let columns;
   export let mines;
@@ -17,34 +21,37 @@
   export let startGameHandler;
   export let endGameHandler;
 
-  let board = initBoard(rows, columns, mines);
-
-  // TODO: this
+  // Local state
   let interactionAllowed = true;
+  $: board = createBoard(rows * columns);
+  $: board2D = to2DArray(board, columns);
 
+  // Lifecycle
+  onMount(() => {
+    const initBoard = createBoardInitializer(mines);
+    board = initBoard(board);
+    console.log(board);
+  });
+
+  // Other
   const revealFieldHandler = (row, column) => event => {
     if (!interactionAllowed) {
       return;
     }
-
     // Start game when user click first time
     if (!isGameStarted) {
       startGameHandler();
     }
-
+    const boardPosition = convertTo1DPos(row, column, columns);
     if (event.which === LEFT_MOUSE_BUTTON) {
-      const { board: newBoard, isMineHit, isGameEnd } = revealFieldAtPos(
-        board,
-        row,
-        column
-      );
-      board = newBoard;
-      const didPlayerWin = isGameEnd && !isMineHit;
+      board = revealFieldAtPos(board, boardPosition);
+      const playerWon = isGameWon(board);
+      const playerLost = isGameLost(board);
+      const gameEnded = playerWon || playerLost;
 
-      if (isGameEnd) {
-        interactionAllowed = false;
-        endGameHandler(didPlayerWin);
+      if (gameEnded) {
         board = revealAllFields(board);
+        endGameHandler(playerWon);
       }
     }
   };
@@ -56,7 +63,8 @@
     }
 
     if (event.which === RIGHT_MOUSE_BUTTON) {
-      board = flagFieldAtPos(board, row, column);
+      createBoardUpdater(board);
+      board = flagField(board, row * column);
     }
   };
 
@@ -86,9 +94,8 @@
   }
 </style>
 
-interactionAllowed: {interactionAllowed}
 <div class="board-grid">
-  {#each board as row, i}
+  {#each board2D as row, i}
     <div class="board-grid-row">
       {#each row as { isMine, isFlagged, isRevealed, neighbouringMines }, j}
         <Field

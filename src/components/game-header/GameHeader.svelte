@@ -1,5 +1,5 @@
 <script>
-  import Time from "./Time.svelte";
+  import Time from "../time/Time.svelte";
 
   // Props
   export let isGameStarted;

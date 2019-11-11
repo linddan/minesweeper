@@ -1,41 +1,44 @@
 export const for2D = (rows, columns, fn) => {
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < columns; j++) {
-      fn(i, j);
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < columns; j++) {
+            fn(i, j);
+        }
     }
-  }
 };
 
 export const map2D = (origArray, fn) => {
-  let newArr = [];
-  origArray.map((row, rowIndex) => {
-    const rowData = [];
-    row.map((element, colIndex) =>
-      rowData.push(fn(element, rowIndex, colIndex, origArray)))
-    return newArr.push([...rowData]);
-  });
-  return newArr;
+    let newArr = [];
+    origArray.map((row, rowIndex) => {
+        const rowData = [];
+        row.map((element, colIndex) =>
+            rowData.push(fn(element, rowIndex, colIndex, origArray)))
+        return newArr.push([...rowData]);
+    });
+    return newArr;
 };
 
-export const getRandomPositions2D = (amount, sizeX, sizeY) => {
-  const positions = [];
-  while (positions.length < amount) {
-    const x = Math.floor(Math.random() * sizeX);
-    const y = Math.floor(Math.random() * sizeY);
-    const isUnique = !positions.some(([i, j]) => x === i && y === j)
-    if (isUnique) {
-      positions.push([x, y]);
+export const getRandomPositions = (amount, arrayLength) => {
+    const positions = [];
+    while (positions.length < amount) {
+        const randPos = Math.floor(Math.random() * arrayLength);
+        const isUnique = !positions.some(i => i === randPos)
+        if (isUnique) {
+            positions.push(randPos);
+        }
     }
-  }
-  return positions;
+    return positions;
 }
 
-// Mention they have to be of equal lenght
-export const getDimensions2D = (arr) => [arr.length, arr[0].length];
+export const to2DArray = (array, columns) => {
+    let row = [];
+    return array.reduce((array2D, field, index) => {
+        row.push({ ...field })
+        if ((index + 1) % columns === 0) {
+            array2D.push(row);
+            row = [];
+        }
+        return array2D;
+    }, []);
+};
 
-export const isPosValid2D = (arr, x, y) => arr[x] && arr[x][y]
-
-export const getFieldAtPos = (arr, x, y) =>
-  isPosValid2D(arr, x, y)
-    ? arr[x][y]
-    : null;
+export const convertTo1DPos = (row, col, colSize) => row * colSize + col;
