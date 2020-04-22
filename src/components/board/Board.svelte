@@ -3,8 +3,8 @@
   import {
     createBoard,
     createBoardInitializer,
-    revealFieldAtPos,
-    flagField,
+    revealField,
+    flagFieldAtPos,
     revealAllFields,
     isGameWon,
     isGameLost
@@ -23,8 +23,7 @@
 
   // Local state
   let interactionAllowed = true;
-  $: board = createBoard(rows * columns);
-  $: board2D = to2DArray(board, columns);
+  $: board = createBoard(rows, columns);
 
   // Lifecycle
   onMount(() => {
@@ -34,7 +33,7 @@
   });
 
   // Other
-  const revealFieldHandler = (row, column) => event => {
+  const revealFieldHandler = (row, col) => event => {
     if (!interactionAllowed) {
       return;
     }
@@ -42,17 +41,16 @@
     if (!isGameStarted) {
       startGameHandler();
     }
-    const boardPosition = convertTo1DPos(row, column, columns);
     if (event.which === LEFT_MOUSE_BUTTON) {
-      board = revealFieldAtPos(board, boardPosition);
+      board = revealField(board, row, col);
       const playerWon = isGameWon(board);
       const playerLost = isGameLost(board);
       const gameEnded = playerWon || playerLost;
 
-      if (gameEnded) {
-        board = revealAllFields(board);
-        endGameHandler(playerWon);
-      }
+      //   if (gameEnded) {
+      //     board = revealAllFields(board);
+      //     endGameHandler(playerWon);
+      //   }
     }
   };
 
@@ -64,7 +62,7 @@
 
     if (event.which === RIGHT_MOUSE_BUTTON) {
       createBoardUpdater(board);
-      board = flagField(board, row * column);
+      board = flagFieldAtPos(board, row, column);
     }
   };
 
@@ -95,14 +93,15 @@
 </style>
 
 <div class="board-grid">
-  {#each board2D as row, i}
+  {#each board as row, i}
     <div class="board-grid-row">
-      {#each row as { isMine, isFlagged, isRevealed, neighbouringMines }, j}
+      {#each row as { isMine, isFlagged, isRevealed, neighbouringMines, groupName }, j}
         <Field
           {isMine}
           {isFlagged}
           {isRevealed}
           {neighbouringMines}
+          {groupName}
           revealFieldHandler={interactionAllowed && revealFieldHandler(i, j)}
           flagFieldHandler={interactionAllowed && flagFieldHandler(i, j)}
           isEven={!isEven(i, j)} />

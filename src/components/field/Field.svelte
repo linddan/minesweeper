@@ -8,6 +8,7 @@
   export let isEven;
   export let revealFieldHandler;
   export let flagFieldHandler;
+  export let groupName;
 
   isRevealed = true;
 
@@ -85,7 +86,7 @@
     on:mousedown={revealFieldHandler}
     on:contextmenu={flagFieldHandler}>
     {#if isRevealed || isFlagged}
-      <p transition:fade={{ duration: 100 }}>{content}</p>
+      <p transition:fade={{ duration: 100 }}>{groupName}</p>
     {/if}
   </div>
 </div>

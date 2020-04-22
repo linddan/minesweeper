@@ -1,6 +1,6 @@
 import { neighbourPositionOffsets, getNeighbourPositionOffsets } from "./board.constants";
 import { compose, pipe } from "../../utils/fn.utils";
-import { getRandomPositions, to2DArray } from "../../utils/array.utils";
+import { getRandomPositions, to2DArray, map2D, getDimensions2D, getRandomPositions2D } from "../../utils/array.utils";
 import {
     isMine,
     isRevealed,
@@ -12,33 +12,47 @@ import {
     placeMine,
     setGroupName,
     setNeighbouringMines,
+    hasNoNeighbouringMines,
+    hasSameGroupName,
 } from '../field/field.util';
 
-
-// const createFieldUpdater = (field) => (fieldOp) => fieldOp(field)
-
-const createBoardUpdater = (board) => (position, fieldOp) =>
-    board.map((field, index) =>
-        index === position ? fieldOp(field) : { ...field });
+const createBoardUpdater = (board) => (row, col, fieldOp) =>
+    map2D(board, (field, r, c) =>
+        (r === row && c === col)
+            ? fieldOp(field)
+            : { ...field });
 
 //
 // Board functions
 //
-const getField = (board, pos) => board[pos] ? { ...board[pos] } : null;
+const getField = (board, row, col) =>
+    board[row] && board[row][col]
+        ? { ...board[row][col] }
+        : null;
 
 export const createBoard = (
-    noOfFields,
+    rows,
+    cols,
     defaultField = {
         isMine: false,
         isRevealed: false,
         isFlagged: false,
         neighbouringMines: 0,
         groupName: null,
-    }) => new Array(noOfFields).fill({ ...defaultField });
+    }) => new Array(rows).fill(new Array(cols).fill({ ...defaultField }));
 
-const cloneBoard = board => board.map(field => ({ ...field }));
+const cloneBoard = board => map2D(board, field => ({ ...field }));
 
-export const revealAllFields = (board) => board.map(reveal);
+const isSameBoardPosition = (row1, col1, row2, col2) =>
+    row1 === row2 && col1 === col2
+
+export const revealAllFields = (board) => map2D(board, reveal);
+
+export const flagFieldAtPos = (board, row, col) =>
+    createBoardUpdater(board)(row, col, toggleFlagged)
+
+export const placeMineAtPos = (board, row, col) =>
+    createBoardUpdater(board)(row, col, placeMine)
 
 export const createBoardInitializer = (noOfMines) =>
     compose(
@@ -48,58 +62,70 @@ export const createBoardInitializer = (noOfMines) =>
     )
 
 const createMinePlacer = noOfMines => board => {
-    const minePositions = getRandomPositions(noOfMines, board.length);
-    return board.map((field, position) =>
-        (minePositions.includes(position))
+    const { rows, cols } = getDimensions2D(board);
+    const minePositions = getRandomPositions2D(noOfMines, rows, cols);
+    return map2D(board, (field, row, col) =>
+        !!minePositions.find(({ x: mineRow, y: mineCol }) =>
+            isSameBoardPosition(mineRow, mineCol, row, col))
             ? placeMine(field)
             : { ...field }
     );
 };
 
-const calculateNeighbouringMines = board => {
-    const newBoard = to2DArray(board, 8); // remove hard coding
-    newBoard.map((row, rowIndex) => {
-        return row.map((field, columnIndex) => {
-            const neighbouringMines =
-                neighbourPositionOffsets.reduce((noOfMines, [rowOffset, columnOffset]) => {
-                    const neighbouringField = getField(board, rowIndex + rowOffset, columnIndex + columnOffset);
-                    noOfMines += neighbouringField && isMine(neighbouringField) ? 1 : 0;
-                    return noOfMines;
-                }, 0);
-            return setNeighbouringMines(field, neighbouringMines);
-        });
-    });
-    console.log(newBoard)
-    return newBoard.flat();
+export const isGameWon = (board) =>
+    board.flat().every((field) =>
+        isMine(field)
+            ? !isRevealed(field)
+            : isRevealed(field)
+    );
+
+export const isGameLost = (board) =>
+    board.flat().some((field) =>
+        isMine(field)
+            ? isRevealed(field)
+            : false
+    );
+
+export const revealField = (board, row, col) => {
+    const revealedField = getField(board, row, col);
+    return map2D(board, (field, r, c) => {
+        const shouldRevealField =
+            isSameBoardPosition({ row, col }, { r, c }) ||
+            hasNoNeighbouringMines(revealedField) &&
+            hasSameGroupName(field, revealedField)
+
+        return shouldRevealField
+            ? reveal(field)
+            : { ...field };
+    })
 };
 
-const calculateNeighbouringMines2 = board =>
-    board.map((field, pos) => {
-        const neighbouringMines =
-            getNeighbourPositionOffsets(8).reduce((noOfMines, posOffset) => {
-                const neighbouringField = getField(board, pos + posOffset);
-                noOfMines += isValidField(neighbouringField) && isMine(neighbouringField) ? 1 : 0;
-                return noOfMines;
-            }, 0);
-        return setNeighbouringMines(field, neighbouringMines);
+const calculateNeighbouringMines = (board) =>
+    map2D(board, (field, row, column) => {
+        const amount = neighbourPositionOffsets.reduce((noOfMines, [rowOffset, columnOffset]) => {
+            const field = getField(board, row + rowOffset, column + columnOffset);
+            noOfMines += field && isMine(field) ? 1 : 0;
+            return noOfMines
+        }, 0);
+        return setNeighbouringMines(field, amount)
     });
 
 // TODO: This mutates original board
-const traverseNeighbouringFields = (board, pos, groupName, traversalMap) => {
-    traversalMap[pos].visited = true;
+const traverseNeighbouringFields = (board, row, column, groupName, traversalMap) => {
+    traversalMap[row][column].visited = true;
 
     // TODO: Pass neighbour positions
-    getNeighbourPositionOffsets(8).forEach(posOffset => {
-        const neighbourField = getField(board, pos + posOffset);
-        console.log({ neighbourField })
+    neighbourPositionOffsets.map(([rowOffset, columnOffset]) => {
+        const neighbourRow = row + rowOffset
+        const neighbourColumn = column + columnOffset;
+        const neighbourField = getField(board, neighbourRow, neighbourColumn);
         const isNeighbourPartOfIsland =
             neighbourField
-            && !traversalMap[pos + posOffset].visited
-            && getNeighbouringMines(neighbourField) === 0;
-
+            && !traversalMap[neighbourRow][neighbourColumn].visited
+            && neighbourField.neighbouringMines === 0;
         if (isNeighbourPartOfIsland) {
-            traversalMap[pos].groupName = groupName;
-            traversalMap = traverseNeighbouringFields(board, posOffset, groupName, traversalMap);
+            traversalMap[neighbourRow][neighbourColumn].groupName = groupName;
+            traversalMap = traverseNeighbouringFields(board, neighbourRow, neighbourColumn, groupName, traversalMap);
         }
     });
     return traversalMap;
@@ -107,56 +133,30 @@ const traverseNeighbouringFields = (board, pos, groupName, traversalMap) => {
 
 export const calculateIslands = (board) => {
     const newBoard = cloneBoard(board);
-    let traversalMap = createBoard(board.length, { visited: false, groupName: null })
+    const { rows, columns } = getDimensions2D(newBoard);
+    let traversalMap = createBoard(rows, columns, { visited: false, groupName: null })
 
-    newBoard.forEach((field, position) => {
-        const isZeroIsland = field && !field.isMine && field.neighbouringMines === 0;
-        const isNotVisited = !traversalMap[position].visited;
-
-        if (isZeroIsland && isNotVisited) {
-            const groupName = Math.random().toString(36).substr(2, 5);
-            traversalMap[position].groupName = groupName;
-            traversalMap[position].visited = true;
-            traversalMap = traverseNeighbouringFields(newBoard, position, groupName, traversalMap);
-        } else {
-            traversalMap[position].visited = true;
+    for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++) {
+            const field = getField(newBoard, row, column);
+            const isZeroIsland = field && !field.isMine && field.neighbouringMines === 0;
+            if (isZeroIsland && !traversalMap[row][column].visited) {
+                const groupName = Math.random().toString(36).substr(3, 5);
+                traversalMap[row][column].groupName = groupName;
+                traversalMap[row][column].visited = true;
+                traversalMap = traverseNeighbouringFields(newBoard, row, column, groupName, traversalMap);
+            } else {
+                traversalMap[row][column].visited = true;
+            }
         }
-    });
+    }
+    for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++) {
+            if (traversalMap[row][column].groupName) {
+                newBoard[row][column].groupName = traversalMap[row][column].groupName
 
-    newBoard.forEach((field, index) => {
-        if (traversalMap[index].groupName) {
-            newBoard[index].groupName = traversalMap[index].groupName
+            }
         }
-    });
-
+    }
     return newBoard;
 };
-
-export const isGameWon = (board) =>
-    board.every((field) =>
-        isMine(field)
-            ? !isRevealed(field)
-            : isRevealed(field)
-    );
-
-export const isGameLost = (board) =>
-    board.some((field) =>
-        isMine(field)
-            ? isRevealed(field)
-            : false
-    );
-
-export const revealFieldAtPos = (board, pos) => {
-    const revealedField = getField(board, pos);
-    return board.map((field, index) => {
-        if (index === pos ||
-            getNeighbouringMines(revealedField) === 0 &&
-            getGroupName(field) === getGroupName(revealedField)) {
-            return reveal(field);
-        }
-        return { ...field };
-    })
-};
-
-export const flagField = (board, pos) =>
-    createBoardUpdater(board)(pos, toggleFlagged)

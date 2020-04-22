@@ -29,6 +29,22 @@ export const getRandomPositions = (amount, arrayLength) => {
     return positions;
 }
 
+export const getRandomPositions2D = (amount, sizeX, sizeY) => {
+    const positions = [];
+    while (positions.length < amount) {
+        const x = Math.floor(Math.random() * sizeX);
+        const y = Math.floor(Math.random() * sizeY);
+        const isUnique = !positions.some(({ i, j }) => x === i && y === j)
+        if (isUnique) {
+            positions.push({ x, y });
+        }
+    }
+    return positions;
+}
+
+export const getDimensions2D = (arr) =>
+    ({ rows: arr.length, cols: arr[0].length });
+
 export const to2DArray = (array, columns) => {
     let row = [];
     return array.reduce((array2D, field, index) => {

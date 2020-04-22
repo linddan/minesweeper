@@ -36,7 +36,7 @@
   <Board
     rows={8}
     columns={8}
-    mines={2}
+    mines={8}
     {isGameStarted}
     {startGameHandler}
     {endGameHandler} />
