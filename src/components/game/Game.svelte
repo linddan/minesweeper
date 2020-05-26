@@ -1,25 +1,56 @@
 <script>
-  import GameInfo from "../game-header/GameHeader.svelte";
+  import { onMount } from "svelte";
+  import { createMachine, interpret } from "@xstate/fsm";
+  import { state, event, stateMachineConfig } from "./state-machine-config";
+  import { levels } from "./game.constants";
+
+  import GameHeader from "../game-header/GameHeader.svelte";
   import Board from "../board/Board.svelte";
-  import {
-    GAME_NOT_STARTED,
-    GAME_STARTED,
-    GAME_WON,
-    GAME_LOST
-  } from "./Game.constants.js";
 
-  let gameState = GAME_NOT_STARTED;
+  const gameService = interpret(createMachine(stateMachineConfig));
 
-  $: isGameStarted = gameState === GAME_STARTED;
+  let gameState = null;
+  let selectedLevel = levels[0];
 
-  const startGameHandler = () => {
-    gameState = GAME_STARTED;
-    console.log("gameStartHandler", gameState);
+  /*
+   * Handlers
+   */
+  const onClickBoard = () => {
+    // Start the game once player makes a move
+    if (gameState === state.START) {
+      gameService.send(event.START_PLAYING);
+    }
   };
-  const endGameHandler = isWin => {
-    gameState = isWin ? GAME_WON : GAME_LOST;
-    console.log("gameOverHandler", gameState);
+
+  const onGameStateChanged = state => {
+    gameState = state.value;
+    console.log(`gameState changed to ${state.value}`);
   };
+  const onStart = () => {
+    console.log("onStart called");
+    gameService.send(event.START_PLAYING);
+  };
+  const onPause = () => {
+    console.log("onPause called");
+    gameService.send(event.PAUSE);
+  };
+  const onWon = () => {
+    console.log("onWon called");
+    gameService.send(event.WON);
+  };
+  const onLost = () => {
+    console.log("onLost called");
+    gameService.send(event.LOST);
+  };
+
+  onMount(() => {
+    gameService.subscribe(onGameStateChanged);
+    gameService.start();
+
+    return () => {
+      gameService.stop();
+    };
+  });
 </script>
 
 <style>
@@ -30,14 +61,15 @@
 </style>
 
 <div class="game">
-  <p>isGameStarted: {isGameStarted}</p>
-  <p>gameState: {gameState}</p>
-  <GameInfo {isGameStarted} />
+  <GameHeader
+    isGameRunning={gameState === state.PLAYING}
+    {levels}
+    {selectedLevel} />
   <Board
-    rows={8}
-    columns={8}
-    mines={8}
-    {isGameStarted}
-    {startGameHandler}
-    {endGameHandler} />
+    rows={selectedLevel.rows}
+    columns={selectedLevel.columns}
+    mines={selectedLevel.mines}
+    on:boardClicked={onClickBoard}
+    on:pooHit={onLost}
+    on:boardSweeped={onWon} />
 </div>

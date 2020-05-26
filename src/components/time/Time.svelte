@@ -26,7 +26,7 @@
 
 <style>
   .clock {
-    font-size: 3rem;
+    font-size: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -34,5 +34,5 @@
 </style>
 
 <div class="clock">
-  <p>🕑 {time}</p>
+  <p>{time}</p>
 </div>

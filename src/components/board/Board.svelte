@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, createEventDispatcher } from "svelte";
   import {
     createBoard,
     createBoardInitializer,
@@ -8,67 +8,54 @@
     revealAllFields,
     isGameWon,
     isGameLost
-  } from "./board.util.js";
-  import { convertTo1DPos, to2DArray } from "../../utils/array.utils";
+  } from "./board.utils.js";
   import { LEFT_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON } from "./board.constants.js";
+  import { convertTo1DPos, to2DArray } from "../../utils/array.utils";
+  import { isEven } from "../field/field.utils";
   import Field from "../field/Field.svelte";
 
-  // Props
   export let rows;
   export let columns;
   export let mines;
-  export let isGameStarted;
-  export let startGameHandler;
-  export let endGameHandler;
 
-  // Local state
-  let interactionAllowed = true;
-  $: board = createBoard(rows, columns);
+  const setupBoard = (rows, columns, mines) => {
+    const defaultBoard = createBoard(rows, columns);
+    const initializeBoard = createBoardInitializer(mines);
+    return initializeBoard(defaultBoard);
+  };
 
-  // Lifecycle
-  onMount(() => {
-    const initBoard = createBoardInitializer(mines);
-    board = initBoard(board);
-    console.log(board);
-  });
+  const dispatch = createEventDispatcher();
+  let board = setupBoard(rows, columns, mines);
 
-  // Other
-  const revealFieldHandler = (row, col) => event => {
-    if (!interactionAllowed) {
-      return;
-    }
-    // Start game when user click first time
-    if (!isGameStarted) {
-      startGameHandler();
-    }
-    if (event.which === LEFT_MOUSE_BUTTON) {
-      board = revealField(board, row, col);
-      const playerWon = isGameWon(board);
-      const playerLost = isGameLost(board);
-      const gameEnded = playerWon || playerLost;
+  console.log({ board });
 
-      //   if (gameEnded) {
-      //     board = revealAllFields(board);
-      //     endGameHandler(playerWon);
-      //   }
+  const checkBoardStatus = () => {
+    if (isGameLost(board)) {
+      dispatch("pooHit");
+    } else if (isGameWon(board)) {
+      dispatch("boardSweeped");
+      board = revealAllFields(board);
     }
   };
 
-  const flagFieldHandler = (row, column) => event => {
-    event.preventDefault();
-    if (!isGameStarted) {
-      startGameHandler();
+  const onClickField = (row, column) => event => {
+    dispatch("boardClicked");
+    switch (event.which) {
+      case LEFT_MOUSE_BUTTON:
+        board = revealField(board, [row, column]);
+        console.log({ board });
+        break;
+      case RIGHT_MOUSE_BUTTON:
+        event.preventDefault();
+        board = flagFieldAtPos(board, [row, column]);
+        break;
+      default:
+        return;
     }
-
-    if (event.which === RIGHT_MOUSE_BUTTON) {
-      createBoardUpdater(board);
-      board = flagFieldAtPos(board, row, column);
-    }
+    checkBoardStatus();
   };
 
-  const isEven = (row, col) => {
-    return row % 2 === 0 ? col % 2 === 0 : col % 2 !== 0;
-  };
+  onMount(() => {});
 </script>
 
 <style>
@@ -78,14 +65,6 @@
     height: 100%;
     max-width: 100%;
     max-height: 100%;
-    box-shadow: 5px 5px 10px #969696;
-    -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none; /* Safari */
-    -khtml-user-select: none; /* Konqueror HTML */
-    -moz-user-select: none; /* Old versions of Firefox */
-    -ms-user-select: none; /* Internet Explorer/Edge */
-    user-select: none; /* Non-prefixed version, currently
-    supported by Chrome, Opera and Firefox */
   }
   .board-grid-row {
     display: flex;
@@ -95,16 +74,15 @@
 <div class="board-grid">
   {#each board as row, i}
     <div class="board-grid-row">
-      {#each row as { isMine, isFlagged, isRevealed, neighbouringMines, groupName }, j}
+      {#each row as { isMine, isFlagged, isRevealed, neighboringMines, groupName }, j}
         <Field
           {isMine}
           {isFlagged}
           {isRevealed}
-          {neighbouringMines}
+          {neighboringMines}
           {groupName}
-          revealFieldHandler={interactionAllowed && revealFieldHandler(i, j)}
-          flagFieldHandler={interactionAllowed && flagFieldHandler(i, j)}
-          isEven={!isEven(i, j)} />
+          isEven={isEven(i, j)}
+          onClick={onClickField(i, j)} />
       {/each}
     </div>
   {/each}

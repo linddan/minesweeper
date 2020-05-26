@@ -1,6 +1,5 @@
-
-export const GAME_NOT_STARTED = 'game-not-started';
-export const GAME_STARTED = 'game-started';
-export const GAME_PAUSED = 'game-paused';
-export const GAME_WON = 'game-won';
-export const GAME_LOST = 'game-lost';
+export const levels = [
+  { name: "Easy", rows: 8, columns: 8, mines: 8 },
+  { name: "Medium", rows: 32, columns: 32, mines: 32 },
+  { name: "Hard", rows: 64, columns: 64, mines: 64 },
+];
